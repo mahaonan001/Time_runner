@@ -25,9 +25,7 @@ un_set_hour:
     mov ax,4c00h
     int 21h
 main ENDP
-code ends
-end main
-
+end start
 ;description : every second give a interrupt to the program and call the PerSecond procedure to update the time./每秒给出一个中断，调用Ten2或被Ten2调用
 PerSecond PROC NEAR
     
@@ -42,3 +40,4 @@ Ten2 ENDP
 Showing PROC NEAR
     
 Showing ENDP
+code ends
