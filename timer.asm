@@ -1,6 +1,7 @@
 stack segment stack
     db 100h dup(?)
 stack ends
+
 data segment
     buffer db 'The default timer is set to 2:00:00, if you want to change the time, please enter the new time with hours: $'
     set_hour_error_message db 'The hours must be greater or equal to 0. Please try again: $'
@@ -20,6 +21,8 @@ start:
     ; init
     mov ax, data
     mov ds, ax
+    mov ax, stack
+    mov ss, ax
 
     ; input hours 
     mov ah, 01h
@@ -56,7 +59,6 @@ set_hour_exception:
     jmp exit
     
 main ENDP
-end start
 
 ;description : every second give a interrupt to the program and call the PerSecond procedure to update the time./每秒给出一个中断，调用Ten2或被Ten2调用
 PerSecond PROC NEAR
@@ -73,3 +75,4 @@ Showing PROC NEAR
     
 Showing ENDP
 code ends
+end start
