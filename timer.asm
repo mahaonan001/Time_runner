@@ -2,7 +2,11 @@ stack segment stack
     db 100h dup(?)
 stack ends
 data segment
-    buffer db 'time is 2:00:00, if you want to change the time, please enter the new time with hours:'
+    buffer db 'The default timer is set to 2:00:00, if you want to change the time, please enter the new time with hours: $'
+    set_hour_error_message db 'The hours must be greater or equal to 0. Please try again: $'
+
+    newline db 0dh, 0ah, '$'
+
     hour db 2
     minute db 0
     second db 0
@@ -13,19 +17,47 @@ main PROC Far
     assume cs:code, ds:data
     
 start:
+    ; init
     mov ax, data
     mov ds, ax
-    mov ah,01h
+
+    ; input hours 
+    mov ah, 01h
     int 21h
-    cmp al,0
-    ja set_hour
-    mov hour,al
+
+    cmp al, '0'
+    jl set_hour_exception
+
+    mov hour, al
+
+    ; input minutes
+    ; ...
+
+    ; input seconds
+    ; ...
+
     call PerSecond
-un_set_hour:
+
+    call Ten2
+
+    call Showing
+
+exit:
     mov ax,4c00h
     int 21h
+
+
+set_hour_exception:
+    ; print error message
+    mov ah, 09h
+    lea dx, [set_hour_error_message]
+    int 21h
+
+    jmp exit
+    
 main ENDP
 end start
+
 ;description : every second give a interrupt to the program and call the PerSecond procedure to update the time./每秒给出一个中断，调用Ten2或被Ten2调用
 PerSecond PROC NEAR
     
