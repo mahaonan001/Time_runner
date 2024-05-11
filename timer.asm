@@ -13,13 +13,13 @@ data segment
     minute db 0
     second db 0
 
-    ; Total seconds, for comparing(`cmp`) purpose: while (total_seconds > 0) { /* do something ... */}
-    total_seconds db 0
+    ; Total seconds, for comparing(`cmp`) purpose: while (total_seconds > 0) { /* do something ... */ }
+    total_seconds dw 0
 
 data ends
 
 code segment
-main PROC Far
+main PROC FAR
     assume cs:code, ds:data
     
 start:
@@ -45,7 +45,7 @@ start:
     ; ...
 
     ; total_seconds = hour * 3600 + minute * 60 + second
-    ; ...
+    call TimeToSeconds
 
     ; while (total_seconds > 0)
     jmp timer_loop_cond
@@ -83,8 +83,96 @@ PerSecond ENDP
 ; 将时间转换，并将时间设置到三个寄存器或数据段。每秒更新当前时间。
 ; total_seconds--, and update the three variables `hours`, `minute`, `second`
 Ten2 PROC NEAR
-    
+    dec [total_seconds]
+    call SecondsToTime
+    ret
 Ten2 ENDP
+
+; let total_seconds = hour * 3600 + minute * 60 + second
+TimeToSeconds PROC NEAR
+    ; save registers
+    push ax
+    push bx
+    push dx
+
+    ; dx ax = hour
+    mov dx, 0
+    mov ah, 0
+    mov al, [hour]
+    ; bx = 3600
+    mov bx, 3600
+    ; ax *= bx
+    mul bx
+    ; total_seconds = ax
+    mov [total_seconds], ax
+
+    ; dx ax = minute
+    mov dx, 0
+    mov ah, 0
+    mov al, [minute]
+    ; bx = 60
+    mov bx, 60
+    ; ax *= bx
+    mul bx
+    ; total_seconds += ax
+    add [total_seconds], ax
+
+    ; total_seconds += second
+    mov ah, 0
+    mov al, [second]
+    add [total_seconds], ax
+
+    ; retreive registers
+    pop dx
+    pop bx
+    pop ax
+    
+    ret
+TimeToSeconds ENDP
+
+; let 
+;   hour = total_seconds / 3600
+;   minute = (total_seconds % 3600) / 60
+;   second = (total_seconds % 3600) % 60
+SecondsToTime PROC NEAR
+    ; save registers
+    push ax
+    push bx
+    push dx
+
+    ; dx ax = total_seconds
+    mov dx, 0
+    mov ax, [total_seconds]
+    ; bx = 3600
+    mov bx, 3600
+    ; dx = total_seconds % 3600
+    ; ax = total_seconds / 3600
+    div bx
+    ; hour = al
+    mov [hour], al
+
+    ; dx ax = dx (aka total_seconds % 3600)
+    mov ax, dx
+    mov dx, 0
+    ; bx = 60
+    mov bx, 60
+
+    ; dx = (total_seconds % 3600) % 60
+    ; ax = (total_seconds % 3600) / 60
+    div bx
+
+    ; minute = (total_seconds % 3600) / 60
+    mov [minute], al
+    ; second = (total_seconds % 3600) % 60
+    mov [second], dl
+
+    ; retreive registers
+    pop dx
+    pop bx
+    pop ax
+    
+    ret
+SecondsToTime ENDP
 
 ; Description : every second, show the current time on the screen,by using diffent corlars and formats.
 ; 输出函数，通过改变时间的格式和颜色显示当前时间。
