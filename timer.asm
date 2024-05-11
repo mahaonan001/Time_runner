@@ -1,5 +1,6 @@
 stack segment stack
-    db 100h dup(?)
+    dw 100h dup(?)
+    ;DW 80 DUP(0)---huang??
 stack ends
 
 data segment
@@ -20,7 +21,7 @@ data ends
 
 code segment
 main PROC FAR
-    assume cs:code, ds:data
+    assume cs:code, ds:data ,ss:stack
     
 start:
     ; init
@@ -38,12 +39,6 @@ start:
 
     mov hour, al
 
-    ; input minutes
-    ; ...
-
-    ; input seconds
-    ; ...
-
     ; total_seconds = hour * 3600 + minute * 60 + second
     call TimeToSeconds
 
@@ -51,9 +46,8 @@ start:
     jmp timer_loop_cond
 
 timer_loop:
-    call PerSecond
-    call Ten2
-    call Showing
+    call PerSecond;由Persecond调用Ten2
+    jmp exit
 
 timer_loop_cond:
     cmp [total_seconds], 0
@@ -74,11 +68,22 @@ set_hour_exception:
 main ENDP
 
 ; Description : every second give a interrupt to the program and call the PerSecond procedure to update the time.
-; 每秒给出一个中断，调用Ten2或被Ten2调用
+; 每秒给出一个中断，调用INT_1CH，INT_1CH中断调用TEN2和Showing函数更新时间。
+;-------------------------------------------------------------------------------------------------------------------------------------
 PerSecond PROC NEAR
-    
-PerSecond ENDP
+    MOV AX,STACK
+    MOV SS,AX
 
+    MOV DX,SEG INT_1CH               ;SEG标号段地址
+    MOV DS,DX
+    MOV DX,OFFSET INT_1CH            ;调用子函数INT_1CH 取偏移地址 
+	                                 ;AH=25H功能:置中断向量AL=中断号 DS:DX=入口
+    MOV AH,25H
+    MOV AL,1CH                      ;设置新的1CH中断向量
+    INT 21H
+    ret
+PerSecond ENDP
+;--------------------------------------------------------------------------------------------------------------------------------------
 ; Description : transform the data and set the time to three registers or to data segment. update the time by after 1 second to the current time.
 ; 将时间转换，并将时间设置到三个寄存器或数据段。每秒更新当前时间。
 ; total_seconds--, and update the three variables `hours`, `minute`, `second`
@@ -183,4 +188,43 @@ Showing PROC NEAR
 Showing ENDP
 
 code ends
+;----------------------------------------------------------------------------------------------------
+;using by huang
+code2 segment
+assume cs:code2,ds:data,ss:stack
+INT_1CH PROC far
+    PUSH AX                  ;保存寄存器
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH DS
+    
+    STI
+    mov ax,data
+    mov ds,ax
+    ;- INT 1CH系统中断每秒发生18.2次          
+    ;- Count计数至18为1秒         
+    ;- Count初值为1,先减1执行一次
+    ;- 执行时赋值为18,每次减1,减至0执行更新显示
+       
+    DEC Count                                                                 ;Count初值为1,先减1
+    JNZ Exit                                                                      ;JNZ(结果不为0跳转) 否则Count=0执行更新显示         
+
+    call Ten2;每秒调用Ten2更新时间
+    call Showing;每秒调用Showing显示时间
+    cmp total_seconds,0;若total_seconds=0则退出,否则继续循环
+    jz ret
+    MOV Count,18             ;计数至18(1秒)重新开始,赋值为18减至0执行变色
+
+Exit: 
+    CLI                    ;关中断
+    POP DS
+    POP DX
+    POP CX
+    POP BX
+    POP	AX		      ;恢复寄存器  
+    IRET	              ;中断返回
+INT_1CH  ENDP
+code2 ends
+;-----------------------------------------------------------------------------------------------------
 end start
